@@ -1,0 +1,474 @@
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Data;
+using System.IO;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Xml;
+
+namespace TPlmSign.helper
+{
+    public class ConfigTool
+    {
+        /// <summary>
+        /// 根据签名配置XML，解析信息XML的内容。
+        /// </summary>
+        /// <param name="path"></param>
+        /// <param name="idList"></param>
+        /// <param name="pathList"></param>
+        /// <param name="isConvertPDFList"></param>
+        /// <param name="signTableList"></param>
+        /// <param name="signAttrHT"></param>
+        /// <param name="errormsg"></param>
+        /// <returns></returns>
+        public bool ReadXml(string path, ref List<int> idList, ref List<string> pathList, ref List<string> isConvertPDFList, ref List<DataTable> signTableList, ref Hashtable signAttrHT, out string errormsg)
+        {
+            bool result = true;
+            errormsg = string.Empty;
+            idList = new List<int>();
+            try
+            {
+                #region XML信息读取
+                if (!File.Exists(path))
+                {
+                    errormsg = "配置文件【" + path + "】在此路径下不存在，请联系管理员。";
+                    result = false;
+                    return result;
+                }
+                XmlDocument signInfoDoc = new XmlDocument();
+                signInfoDoc.Load(path);
+                string signConfigPath = AppDomain.CurrentDomain.BaseDirectory + "SignXML\\TPLM.Component.Sign.xml";
+                if (!File.Exists(signConfigPath))
+                {
+                    errormsg = "配置文件模板【TPLM.Component.Sign.xml】不存在，请联系管理员。";
+                    result = false;
+                    return result;
+                }
+                XmlDocument configDoc = new XmlDocument();
+                configDoc.Load(signConfigPath);
+                #endregion
+
+                #region 签名信息获取
+                XmlNodeList rootNodeList = signInfoDoc.SelectNodes("/ROOT");
+                foreach (XmlNode itemNode in rootNodeList)
+                {
+                    XmlNodeList dataNodeList = itemNode.SelectSingleNode("INPUT").ChildNodes;
+                    for (int i = 0; i < dataNodeList.Count; i++)
+                    {
+                        idList.Add(Convert.ToInt32(dataNodeList[i].Attributes["ID"].Value));
+                        DataTable signTable = new DataTable();
+                        signTable.Columns.Add("signTag");//dwg：签名的对象；word：签名的标签；excel：签名的单元格对象；pdf：XY坐标
+                        signTable.Columns.Add("signValue");
+                        signTable.Columns.Add("remark");
+                        XmlAttributeCollection fileAttrCol = dataNodeList[i].SelectSingleNode("SIGNFILE").Attributes;
+                        pathList.Add(fileAttrCol["FILEPATH"].Value);
+                        isConvertPDFList.Add(fileAttrCol["PDF"].Value);
+                        #region 判断信息XML文件中，是否有doctype属性；若没有，则需要配置XML中，只有一个MODELINFO节点，否则报错
+                        bool isExitDocType = false;
+                        XmlAttribute doctypeAttr = dataNodeList[i].Attributes["doctype"];
+                        if (doctypeAttr != null && doctypeAttr["doctype"].Value.ToString() != "")
+                        {
+                            isExitDocType = true;
+                        }
+                        #endregion
+                        string fileExt = System.IO.Path.GetExtension(fileAttrCol["FILENAME"].Value).ToUpper().Substring(1);
+                        XmlNodeList signChildNodes = dataNodeList[i].SelectSingleNode("SIGNINFO").ChildNodes;
+                        switch (fileExt)
+                        {
+                            #region DWG
+                            case "DWG":
+                                for (int n = 0; n < signChildNodes.Count; n++)
+                                {
+                                    XmlNode matchConfigNode;
+                                    if (isExitDocType == true)
+                                    {
+                                        matchConfigNode = configDoc.SelectSingleNode("ROOT/MODEL/DWG/MODELINFO[@NAME='"
+                                                        + fileAttrCol["doctype"].Value
+                                                        + "']/ITEM[@SRCPROP='" + signChildNodes[n].Attributes["NAME"].Value + "']");
+                                    }
+                                    else
+                                    {
+                                        matchConfigNode = configDoc.SelectSingleNode("ROOT/MODEL/DWG/MODELINFO/ITEM[@SRCPROP='" + signChildNodes[n].Attributes["NAME"].Value + "']");
+                                    }
+                                    if (matchConfigNode != null)
+                                    {
+                                        if (matchConfigNode.Attributes["STATUS"].Value.ToUpper() == "Y")
+                                        {
+                                            string value = "";
+                                            result = GetDateValue(ref errormsg, signChildNodes[n], matchConfigNode, out value);
+                                            if (result)
+                                            {
+                                                signTable.Rows.Add(matchConfigNode.Attributes["TEXT"].Value,
+                                                               value,
+                                                                 "");
+                                            }
+                                            else return result;
+                                        }
+                                    }
+                                    else
+                                    {
+                                        errormsg = "信息XML文件中的doctype或名称，和配置XML中【" + fileExt + "】的不匹配。";
+                                        result = false;
+                                        return result;
+                                    }
+                                }
+                                break;
+                            #endregion
+
+                            #region EXCEL
+                            case "XLSX":
+                            case "XLS":
+                                for (int n = 0; n < signChildNodes.Count; n++)
+                                {
+                                    XmlNode matchConfigNode;
+                                    if (isExitDocType == true)
+                                    {
+                                        matchConfigNode = configDoc.SelectSingleNode("ROOT/MODEL/EXCEL/MODELINFO[@NAME='"
+                                                        + fileAttrCol["doctype"].Value
+                                                        + "']/ITEM[@SRCPROP='" + signChildNodes[n].Attributes["NAME"].Value + "']");
+                                    }
+                                    else
+                                    {
+                                        matchConfigNode = configDoc.SelectSingleNode("ROOT/MODEL/EXCEL/MODELINFO/ITEM[@SRCPROP='" + signChildNodes[n].Attributes["NAME"].Value + "']");
+                                    }
+                                    if (matchConfigNode != null)
+                                    {
+                                        if (matchConfigNode.Attributes["STATUS"].Value.ToUpper() == "Y")
+                                        {
+                                            string value = "";
+                                            result = GetDateValue(ref errormsg, signChildNodes[n], matchConfigNode, out value);
+                                            if (result)
+                                            {
+                                                signTable.Rows.Add(matchConfigNode.Attributes["LOCATOIN"].Value,
+                                                               value,
+                                                               "");
+                                            }
+                                            else return result;
+                                        }
+                                    }
+                                    else
+                                    {
+                                        errormsg = "信息XML文件中的doctype或名称，和配置XML中【" + fileExt + "】的不匹配。";
+                                        result = false;
+                                        return result;
+                                    }
+                                }
+                                break;
+                            #endregion
+
+                            #region WORD
+                            case "DOC":
+                            case "DOCX":
+                                for (int n = 0; n < signChildNodes.Count; n++)
+                                {
+                                    XmlNode matchConfigNode;
+                                    if (isExitDocType == true)
+                                    {
+                                        matchConfigNode = configDoc.SelectSingleNode("ROOT/MODEL/WORD/MODELINFO[@NAME='"
+                                                        + fileAttrCol["doctype"].Value
+                                                        + "']/ITEM[@SRCPROP='" + signChildNodes[n].Attributes["NAME"].Value + "']");
+                                    }
+                                    else
+                                    {
+                                        matchConfigNode = configDoc.SelectSingleNode("ROOT/MODEL/WORD/MODELINFO/ITEM[@SRCPROP='" + signChildNodes[n].Attributes["NAME"].Value + "']");
+                                    }
+                                    if (matchConfigNode != null)
+                                    {
+                                        if (matchConfigNode != null && matchConfigNode.Attributes["STATUS"].Value.ToUpper() == "Y")
+                                        {
+                                            string value = "";
+                                            result = GetDateValue(ref errormsg, signChildNodes[n], matchConfigNode, out value);
+                                            if (result)
+                                            {
+                                                signTable.Rows.Add(matchConfigNode.Attributes["DESPROP"].Value,
+                                                                   value,
+                                                                   "");
+                                            }
+                                            else return result;
+                                        }
+                                    }
+                                    else
+                                    {
+                                        errormsg = "信息XML文件中的doctype或名称，和配置XML中【" + fileExt + "】的不匹配。";
+                                        result = false;
+                                        return result;
+                                    }
+                                }
+                                break;
+                            #endregion
+
+                            #region PDF
+                            case "PDF":
+                                for (int n = 0; n < signChildNodes.Count; n++)
+                                {
+                                    XmlNode matchConfigNode;
+                                    if (isExitDocType == true)
+                                    {
+                                        matchConfigNode = configDoc.SelectSingleNode("ROOT/MODEL/PDF/MODELINFO[@NAME='"
+                                                        + fileAttrCol["doctype"].Value
+                                                        + "']/ITEM[@SRCPROP='" + signChildNodes[n].Attributes["NAME"].Value + "']");
+                                    }
+                                    else
+                                    {
+                                        matchConfigNode = configDoc.SelectSingleNode("ROOT/MODEL/PDF/MODELINFO/ITEM[@SRCPROP='" + signChildNodes[n].Attributes["NAME"].Value + "']");
+                                    }
+                                    if (matchConfigNode != null)
+                                    {
+                                        if (matchConfigNode != null && matchConfigNode.Attributes["STATUS"].Value.ToUpper() == "Y")
+                                        {
+                                            string value = "";
+                                            result = GetDateValue(ref errormsg, signChildNodes[n], matchConfigNode, out value);
+                                            if (result)
+                                            {
+                                                signTable.Rows.Add("X:" + matchConfigNode.Attributes["X"].Value + "&" + "Y:" + matchConfigNode.Attributes["Y"].Value,
+                                                                   value,
+                                                                   "");
+                                            }
+                                            else return result;
+                                        }
+                                    }
+                                    else
+                                    {
+                                        errormsg = "信息XML文件中的doctype或名称，和配置XML中【" + fileExt + "】的不匹配。";
+                                        result = false;
+                                        return result;
+                                    }
+                                }
+                                break;
+                            #endregion
+                        }
+                        signTableList.Add(signTable);
+                    }
+                }
+                #endregion
+
+                #region 配置信息获取
+                XmlNodeList configNodeList = configDoc.SelectSingleNode("ROOT/MODEL").ChildNodes;
+                foreach (XmlNode node in configNodeList)
+                {
+                    XmlAttributeCollection nodeAttr = node.SelectSingleNode("MODELINFO").Attributes;
+                    Hashtable attrValueHT = new Hashtable();
+                    for (int m = 0; m < nodeAttr.Count; m++)
+                    {
+                        attrValueHT.Add(nodeAttr[m].Name, nodeAttr[m].Value);
+                    }
+                    signAttrHT.Add(node.Name, attrValueHT);
+                }
+                #endregion
+
+            }
+            catch (Exception ex)
+            {
+                result = false;
+                errormsg = ex.Message;
+            }
+            return result;
+        }
+
+        private static bool GetDateValue(ref string errormsg, XmlNode signChildNode, XmlNode matchConfigNode, out string value)
+        {
+            bool result = true;
+            value = "";
+            if (signChildNode.Attributes["TYPE"].Value == "DATE")
+            {
+                if (matchConfigNode.Attributes["FORMATE"] != null)
+                {
+                    if (matchConfigNode.Attributes["FORMATE"].Value != "")
+                    {
+                        value = Convert.ToDateTime(signChildNode.Attributes["VALUE"].Value).ToString(matchConfigNode.Attributes["FORMATE"].Value.ToString());
+                    }
+                    else
+                    {
+                        value = signChildNode.Attributes["VALUE"].Value;
+                    }
+                }
+                else
+                {
+                    errormsg = "配置XML文件中不存在日期格式的配置。";
+                    result = false;
+                    return result;
+                }
+            }
+            else
+            {
+                value = signChildNode.Attributes["VALUE"].Value;
+            }
+            return true;
+        }
+
+        public bool WriteTipInfo(string path,DataTable tipTable)
+        {
+            bool result = true;
+            try
+            {
+                XmlDocument XmlDoc = new XmlDocument();
+                XmlDoc.Load(path);
+                XmlNode aGlobeNode = XmlDoc.SelectSingleNode("/ROOT/OUTPUT");
+                aGlobeNode.RemoveAll();
+                for (int i = 0; i < tipTable.Rows.Count; i++)
+                {
+                    XmlElement ITEM = XmlDoc.CreateElement("ITEM");
+                    ITEM.SetAttribute("ID", tipTable.Rows[i]["ID"].ToString());
+                    ITEM.SetAttribute("ERRORINFO", tipTable.Rows[i]["ERRORINFO"].ToString());
+                    aGlobeNode.AppendChild(ITEM);
+                }
+                XmlDoc.Save(path);
+            }
+            catch(Exception ex)
+            {
+            }
+                return result;
+        }
+
+
+        public bool ReadMakeUpXml(string TYPE,string ObjTypeStr,string  LifeTime,  
+                                  out string ResultValue , out Hashtable ht, out string errormsg)
+        {
+            bool result = true;
+            errormsg = string.Empty;
+            ht = new Hashtable();
+            ResultValue = "";
+            try
+            {
+                #region XML信息读取
+                string signConfigPath = AppDomain.CurrentDomain.BaseDirectory + "SignXML\\TPLM.Component.Sign.Watermark.xml";
+                if (!File.Exists(signConfigPath))
+                {
+                    errormsg = "配置文件模板【TPLM.Component.Sign.Watermark.xml】不存在，请联系管理员。";
+                    result = false;
+                    return result;
+                }
+                XmlDocument configDoc = new XmlDocument();
+                configDoc.Load(signConfigPath);
+                #endregion
+
+                #region 签名信息获取
+                XmlNodeList DATA_BINDING = configDoc.SelectSingleNode("/ROOT/DATA_BINDING").ChildNodes;
+                XmlNodeList MODEL_LIST = configDoc.SelectSingleNode("/ROOT/MODEL_LIST").ChildNodes;
+                XmlNodeList MARK_LIST = configDoc.SelectSingleNode("/ROOT/MARK_LIST").ChildNodes;
+                decimal MODEL_LIST_ID = 0;
+                string MARK_LIST_ID = "";
+                bool flag = false;
+                if (ObjTypeStr==""&& LifeTime== "")
+                {
+                    foreach (XmlNode itemNode in DATA_BINDING)
+                    {
+                        if (itemNode.Attributes["DEFAULT"].Value == "Y")
+                        {
+                            if (itemNode.Attributes["MODEL_LIST_ID"].Value == "")
+                            {
+                                errormsg = "默认的DATA_BINDING的MODEL_LIST_ID不能为空";
+                                result = false;
+                                return result;
+                            }
+                            if (itemNode.Attributes["MARK_LIST_ID"].Value == "")
+                            {
+                                errormsg = "默认的DATA_BINDING的MARK_LIST_ID不能为空";
+                                result = false;
+                                return result;
+                            }
+                            MODEL_LIST_ID = Convert.ToDecimal(itemNode.Attributes["MODEL_LIST_ID"].Value);
+                            MARK_LIST_ID = itemNode.Attributes["MARK_LIST_ID"].Value.ToString();
+                        }
+                    }
+                }
+                else
+                {
+                    foreach (XmlNode itemNode in DATA_BINDING)
+                    {
+                        if (itemNode.Attributes["BINDING"].Value.Contains(ObjTypeStr)&&
+                            itemNode.Attributes["STAGE"].Value.Contains(LifeTime))
+                        {
+                            flag = true;
+                            MODEL_LIST_ID = Convert.ToDecimal(itemNode.Attributes["MODEL_LIST_ID"].Value);
+                            MARK_LIST_ID = itemNode.Attributes["MARK_LIST_ID"].Value.ToString();
+                        }
+                    }
+                    if (flag == false)
+                    {
+                        errormsg = "设置的MODEL_LIST不存在";
+                        result = false;
+                        return result;
+                    }
+                }
+                if (MODEL_LIST_ID != 0 && MARK_LIST_ID != "")
+                    {
+                        #region 处理MODEL_LIST的匹配
+                        flag = false;
+                        foreach (XmlNode itemNode in MODEL_LIST)
+                        {
+                          if ((Convert.ToDecimal(itemNode.Attributes["ID"].Value) == MODEL_LIST_ID)
+                                &&(itemNode.Attributes["TYPE"].Value== TYPE))
+                            {
+                                flag = true;
+                                foreach (XmlAttribute Attribute in itemNode.Attributes)
+                                {
+                                    ht.Add(Attribute.Name, Attribute.Value);
+                                }
+                            }
+                        }
+                        if (flag == false)
+                        {
+                            errormsg = "设置的MODEL_LIST不存在";
+                            result = false;
+                            return result;
+                        }
+                        #endregion
+                        #region 处理MARK_LIST_ID的匹配
+                        if (MARK_LIST_ID.Contains(','))
+                        {
+                            ResultValue = "";
+                            string[] ids = MARK_LIST_ID.Split(',');
+                            for (int i = 0; i < ids.Length; i++)
+                            {
+                                flag = false;
+                                foreach (XmlNode itemNode in MARK_LIST)
+                                {
+                                    if (Convert.ToDecimal(itemNode.Attributes["ID"].Value) == Convert.ToDecimal(ids[i]))
+                                    {
+                                        flag = true;
+                                        if (ResultValue == "")
+                                        {
+                                            ResultValue = itemNode.Attributes["VALUE"].ToString();
+                                        }
+                                        else
+                                        {
+                                            ResultValue = ResultValue + "," + itemNode.Attributes["VALUE"].ToString();
+                                        }
+                                    }
+                                }
+                                if (flag == false)
+                                {
+                                    errormsg = "设置的MARK_LIST不存在";
+                                    result = false;
+                                    return result;
+                                }
+                            }
+                        }
+                        else
+                        {
+                            foreach (XmlNode itemNode in MARK_LIST)
+                            {
+
+                                if (Convert.ToDecimal(itemNode.Attributes["ID"].Value) == Convert.ToDecimal(MARK_LIST_ID))
+                                {
+                                    ResultValue = itemNode.Attributes["VALUE"].Value.ToString();
+                                }
+                            }
+                        } 
+                        #endregion
+                    }
+                #endregion
+            }
+            catch (Exception ex)
+            {
+                result = false;
+                errormsg = ex.Message;
+            }
+            return result;
+        }
+
+    }
+}

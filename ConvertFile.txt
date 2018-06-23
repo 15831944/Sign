@@ -1,0 +1,275 @@
+
+using System;
+using System.Collections.Generic;
+using System.Configuration;
+using System.IO;
+using System.Linq;
+using System.Text;
+using System.Web;
+using Aspose.Cells;//Excel
+using Aspose.Slides;//PPT
+using Aspose.Words;
+using System.Drawing.Imaging;
+using O2S.Components.PDFRender4NET;
+using System.Drawing;
+
+namespace FileConverHelper
+{
+    public static  class CTyConverFile
+    {
+        public static void replaceintevueHtml(string srcfilename, string templatefilename, string[] orginalArray, string[] replaceArray)
+        {
+            try
+            {
+                //防止文本字符中有特殊字符。必须用Encoding.Default
+                StreamReader reader = new StreamReader(templatefilename, Encoding.Default);
+                String a = reader.ReadToEnd();
+                for (int i = 0; i < orginalArray.Length; i++)
+                {
+                    a = a.Replace(orginalArray[i], replaceArray[i]);
+                }
+                //防止文本字符中有特殊字符。必须用Encoding.Default
+                string desfilename = System.IO.Path.ChangeExtension(srcfilename, ".html");//html文件路径
+                StreamWriter readTxt = new StreamWriter(desfilename, false, Encoding.Default);
+                readTxt.Write(a);
+                readTxt.Flush();
+                readTxt.Close();
+                reader.Close();
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+        }
+
+
+        public enum Definition
+        {
+            One = 1, Two = 2, Three = 3, Four = 4, Five = 5, Six = 6, Seven = 7, Eight = 8, Nine = 9, Ten = 10
+        }
+
+        #region 文件的直接转化
+        public static string ConvertTopdf(string FilePath)
+        {
+            string result = ""; //返回转换之后文件的路径
+            try
+            {
+                string _fileExt = Path.GetExtension(FilePath);
+                switch (_fileExt)
+                {
+                    case ".doc":
+                    case ".docx":
+                        Aspose.Words.Document doc = new Aspose.Words.Document(FilePath);
+                        DocumentBuilder builder = new DocumentBuilder(doc);
+                        Aspose.Words.Font font = builder.Font;
+                        FilePath = Path.ChangeExtension(FilePath, ".pdf");
+                        doc.Save(FilePath, Aspose.Words.SaveFormat.Pdf);
+                        break;
+                    case ".rtf":
+                    case ".xls":
+                    case ".xlsx":
+                        Workbook excel = new Workbook(FilePath); 
+                        Aspose.Cells.Style style = excel.DefaultStyle;
+                        FilePath = Path.ChangeExtension(FilePath, ".pdf");
+                        excel.Save(FilePath, Aspose.Cells.SaveFormat.Pdf);
+                        break;
+                    case ".ppt":
+                    case ".pptx":
+                        Presentation ppt = new Presentation(FilePath);  
+                        FilePath = Path.ChangeExtension(FilePath, ".pdf");
+                        ppt.Save(FilePath, Aspose.Slides.Export.SaveFormat.Pdf);
+                        break;
+                    default:
+                        break;                       
+                }
+                result = FilePath;
+            }
+            catch (Exception ex)
+            {
+
+            }
+            finally
+            {
+                GC.Collect();
+            }
+            return result;
+        }
+        #endregion
+
+
+        #region 文件流形式的转化
+
+        public static string Convert(string aFileName, byte[] aFileData, string aFileOID)
+        {
+            string result = ""; //返回转换之后文件的路径
+            try
+            {
+                string _fileName = Path.GetFileNameWithoutExtension(aFileName);
+                string _fileExt = Path.GetExtension(aFileName); 
+
+                switch (_fileExt)
+                {
+                    case ".doc":
+                    case ".docx":
+                    case ".rtf":
+                        result = WordToPdf(aFileData, aFileOID);
+                        break;
+                    case ".xls":
+                    case ".xlsx":
+                        result = ExcelToPdf(aFileData, aFileOID);
+                        break;
+                    case ".ppt":
+                    case ".pptx":
+                        result = PPTToPdf(aFileData, aFileOID);
+                        break;
+                    default:
+                        break;
+                }
+            }
+            catch (Exception ex)
+            { 
+
+            } 
+            finally
+            { 
+                GC.Collect();
+            }
+            return result; 
+        }
+        public static string PPTToPdf(byte[] aFileData, string wordFileName)
+        {
+            string result = "";
+            string tmpFileName = "";
+            try
+            {
+                tmpFileName = Path.GetTempFileName();
+                System.IO.File.WriteAllBytes(tmpFileName, aFileData);
+                result = Path.GetTempPath() + wordFileName + ".pdf";
+
+                Presentation ppt = new Presentation(tmpFileName);
+                ppt.Save(result, Aspose.Slides.Export.SaveFormat.Pdf);
+            }
+            catch
+            {
+                result = "";
+            }
+            finally
+            {
+
+                GC.Collect();
+                GC.WaitForPendingFinalizers();
+                File.Delete(tmpFileName);
+            }
+            return result;
+        }
+
+        public static string ExcelToPdf(byte[] aFileData, string wordFileName)
+        {
+            string result;
+            object missing = Type.Missing;
+            string tmpFileName = "";
+            try
+            {
+                tmpFileName = Path.GetTempFileName();
+                System.IO.File.WriteAllBytes(tmpFileName, aFileData);
+                result = Path.GetTempPath() + wordFileName + ".pdf";
+                Workbook excel = new Workbook(tmpFileName);
+                excel.Save(result, Aspose.Cells.SaveFormat.Pdf);
+            }
+            catch
+            {
+                result = "";
+            }
+            finally
+            {
+                GC.Collect();
+                GC.WaitForPendingFinalizers();
+                File.Delete(tmpFileName);
+            }
+            return result;
+        }
+
+        public static string WordToPdf(byte[] aFileData, string wordFileName)
+        {
+            string result = "";
+            string tmpFileName = "";
+            try
+            {
+                tmpFileName = System.IO.Path.GetTempFileName();
+                System.IO.File.WriteAllBytes(tmpFileName, aFileData);
+                Document doc = new Document(tmpFileName);
+                result = Path.GetTempPath() + wordFileName + ".pdf";
+                doc.Save(result, Aspose.Words.SaveFormat.Pdf);
+            }
+            catch (Exception ex)
+            {
+                return ex.Message;
+            }
+            finally
+            {
+                GC.Collect();
+                GC.WaitForPendingFinalizers();
+                if (File.Exists(tmpFileName))
+                {
+                    File.Delete(tmpFileName);
+                }
+            }
+            return result;
+        }
+
+        #endregion
+
+
+        //public static string ConvertPDF2Image(byte[] aFileData,
+        //string imageName, int startPageNum, int endPageNum, ImageFormat imageFormat, Definition definition)
+        //{
+        //    //将流文件存储为文件 然后再进行转换
+        //    string tmpFileName = Path.GetTempFileName();
+        //    System.IO.File.WriteAllBytes(tmpFileName, aFileData);
+        //    //end
+        //    PDFFile pdfFile = PDFFile.Open(tmpFileName);
+        //    string imageOutputPath = Path.GetTempPath();
+
+        //    // validate pageNum
+        //    if (startPageNum <= 0)
+        //    {
+        //        startPageNum = 1;
+        //    }
+
+        //    endPageNum = pdfFile.PageCount;
+
+
+        //    if (startPageNum > endPageNum)
+        //    {
+        //        int tempPageNum = startPageNum;
+        //        startPageNum = endPageNum;
+        //        endPageNum = startPageNum;
+        //    }
+        //    // start to convert each page
+        //    List<string> listimage = new List<string>();
+        //    for (int i = startPageNum; i <= endPageNum; i++)
+        //    {
+        //        Bitmap pageImage = pdfFile.GetPageImage(i - 1, 56 * (int)definition);
+        //        pageImage.Save(imageOutputPath + imageName + i.ToString() + "." + imageFormat.ToString(), imageFormat);
+        //        pageImage.Dispose();
+        //        listimage.Add(imageOutputPath + imageName + i.ToString() + "." + imageFormat.ToString());
+        //    }
+        //    //合并图片
+        //    string outputImage = "";
+        //    if (listimage.Count > 0)
+        //    {
+        //        Image img = combineImages(listimage);
+        //        outputImage = imageOutputPath + imageName + "." + imageFormat.ToString();
+        //        img.Save(outputImage);
+        //        for (int i = 0; i < listimage.Count; i++)
+        //        {
+        //            System.IO.File.Delete(listimage[i]);
+        //        }
+        //    }
+        //    pdfFile.Dispose();
+        //    File.Delete(tmpFileName);
+        //    return outputImage;
+        //}
+
+    }
+}

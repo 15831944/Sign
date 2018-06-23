@@ -1,0 +1,439 @@
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Runtime.InteropServices;
+using System.Text;
+using System.Text.RegularExpressions;
+using System.Threading.Tasks;
+using Aspose.Words;
+using Aspose.Words.Drawing;
+using System.Data;
+using Aspose.Cells;
+using TPlmSign.helper;
+using iTextSharp.text.pdf;
+using iTextSharp.text;
+
+namespace TPlmSign
+{
+    public class FileSignHelper
+    {
+        /// <summary>
+        /// 签名总入口
+        /// </summary>
+        /// <param name="path">签名信息xml路径</param>
+        /// <param name="errormsg">读取xml的错误信息</param>
+        /// <returns></returns>
+        public bool SignFile(string path,out string errormsg)
+        {
+            bool result = true;
+            errormsg = string.Empty;
+            try 
+            {  
+                ConfigTool ConfigTool = new helper.ConfigTool();
+                List<int> idList = new List<int>(); List<string> pathList = new List<string>(); List<DataTable> signTableList = new List<DataTable>(); Hashtable signAttrHT = new Hashtable(); List<string> isConvertPDFList = new List<string>();
+                result = ConfigTool.ReadXml(path, ref idList, ref pathList,ref isConvertPDFList, ref signTableList, ref signAttrHT, out errormsg);
+                if (result)
+                {                  
+                    DataTable ErrorDt = new DataTable();
+                    ErrorDt.Columns.Add("ID");
+                    ErrorDt.Columns.Add("ERRORINFO");
+                    for (int i = 0; i < idList.Count; i++)
+                    {
+                        string aOutFile = "";
+                        result = SignFileBySingle(idList[i].ToString(), pathList[i], signTableList[i], signAttrHT, isConvertPDFList[i]=="false"?false:true, out aOutFile, out errormsg);
+                        if (string.IsNullOrEmpty(errormsg))
+                        {
+                            //将地址写入xml中
+                        }
+                        else
+                        {
+                            //将错误信息写入xml
+                            ErrorDt.Rows.Add(idList[i].ToString(), errormsg);
+                        }
+                    }
+                    ConfigTool.WriteTipInfo(path, ErrorDt);
+                }
+                else 
+                { 
+                   return result;                
+                }
+            }
+            catch (Exception ex)
+            {
+                result = false;
+                errormsg = ex.Message;
+            }
+            return result;       
+        }
+
+       /// <summary>
+        /// 单个签名
+       /// </summary>
+       /// <param name="ID">xml中标识id</param>
+       /// <param name="FilePath">物理路径</param>
+        /// <param name="Contens">属性项-属性值;属性值可能为路径或者名称;Excel多一列位置</param>
+       /// <param name="Styles">字体格式</param>
+       /// <param name="convertPDF">是否转化为pdf</param>
+       /// <param name="aOutFile">转化后地址</param>
+       /// <param name="errormsg"></param>
+       /// <returns></returns>
+        public bool SignFileBySingle(string ID,string FilePath, DataTable Contens,Hashtable Styles,bool convertPDF, out string aOutFile, out string errormsg)
+        {
+            bool result = true;
+            aOutFile = string.Empty;
+            errormsg = string.Empty;
+            try
+            {
+                //下载文件到本地
+                string aFileExt = Path.GetExtension(FilePath).ToLower();
+                switch (aFileExt)
+                {
+                    case ".dwg":
+                        result = SignDwgFile(FilePath, Contens,convertPDF, out aOutFile, out errormsg);
+                        break;
+                    case ".docx":
+                    case ".doc":
+                        result = SignWordFile(FilePath, Contens, Styles["WORD"] as Hashtable, out FilePath, out errormsg);
+                        if (convertPDF)
+                        {
+                           aOutFile = FileConverHelper.CTyConverFile.ConvertTopdf(FilePath);
+                        }
+                        break;
+                    case ".xls":
+                    case ".xlsx":
+                        result = SignExcelFile(FilePath, Contens, Styles["EXCEL"] as Hashtable, out FilePath, out  errormsg);
+                        if (convertPDF)
+                        {
+                            aOutFile = FileConverHelper.CTyConverFile.ConvertTopdf(FilePath);
+                        }
+                        break;
+                    case ".pdf":
+                        result = SignPdfFile(FilePath, Contens, Styles["PDF"] as Hashtable, out  aOutFile, out  errormsg);
+                        break;
+                    default:
+                        errormsg = string.Format("{0}格式文件暂不支持电子签名！", aFileExt);
+                        break;
+                }             
+            }
+            catch (Exception ex)
+            {
+                result = false;
+                errormsg = ex.Message;
+            }
+            return result;
+        }
+
+        //签名并转化为pdf.返回的路径为pdf的路径
+        private bool SignDwgFile(string FilePath, DataTable Contens,bool convertPDF,out string aOutFile, out string errormsg)
+        {
+            bool result = true;
+            aOutFile = "";
+            errormsg = "";
+            try
+            {
+                string aStrContens = "";
+                Regex reg = new Regex(@"[();]");
+                for (int i = 0; i < Contens.Rows.Count;i++)
+                {
+                    string signTag = Contens.Rows[i]["signTag"].ToString();
+                    string signValue = Contens.Rows[i]["signValue"].ToString();
+                    //处理签名接口不支持的字符(小括号，分号等等)                           
+                    signValue = reg.Replace(signValue, "");
+                    aStrContens += string.Format("{0}={1};", signTag, signValue);
+                }
+                result = WriteBtlDataToDrawing(FilePath, aStrContens);
+                if (!result)
+                {
+                    errormsg = string.Format("签名{0}失败!", Path.GetFileNameWithoutExtension(FilePath));
+                    return result;
+                }
+                if (convertPDF)
+                {
+                    result = ExportDwgToPdf(FilePath, "");
+                    if (!result)
+                    {
+                        errormsg = string.Format("图纸{0}转为为PDF失败!", Path.GetFileNameWithoutExtension(FilePath));
+                        return result;
+                    }
+                }
+                aOutFile = FilePath;
+            }
+            catch (Exception ex)
+            {
+                result = false;
+                errormsg = "签名失败:" + ex.Message;
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="FilePath"></param>
+        /// <param name="Contens">签名属性Dt;属性项-属性值-Type</param>
+        /// <param name="Styles">字体格式哈希表;key为文档类型，value为值哈希表 FONT_SIZE="9" FONT_TYPE="宋体"</param>
+        /// <param name="aOutFile"></param>
+        /// <param name="errormsg"></param>
+        /// <returns></returns>
+        private bool SignWordFile(string FilePath, DataTable Contens, Hashtable Styles, out string aOutFile, out string errormsg)
+        {
+            bool result = true;
+            aOutFile = "";
+            errormsg = "";
+            try
+            {
+                Aspose.Words.Document doc = new Aspose.Words.Document(FilePath);
+                DocumentBuilder builder = new DocumentBuilder(doc);        
+                for (int i = 0; i < Contens.Rows.Count; i++)
+                {
+                    string signTag = Contens.Rows[i]["signTag"].ToString();
+                    string signValue = Contens.Rows[i]["signValue"].ToString();
+                    try
+                    {
+                        
+                        result = builder.MoveToBookmark(signTag);  //移动至书签位置
+                        if (!result)
+                        {
+                            errormsg = string.Format("未找到书签【{0}】", signTag);
+                        }
+                        else
+                        {
+                            try
+                            {
+                                builder.InsertImage(signValue, 30, 10); //如果是图片地址 在书签出插入图片
+                            }
+                            catch (Exception ex)
+                            {
+                                Aspose.Words.Font font = builder.Font;
+                                if (Styles.ContainsKey("FONT_TYPE"))
+                                {
+                                    font.Name = Styles["FONT_TYPE"].ToString(); //字体
+                                }
+                                if (Styles.ContainsKey("FONT_SIZE"))
+                                {
+                                    font.Size = Convert.ToInt64(Styles["FONT_SIZE"]); //大小
+                                }
+                                if (Styles.ContainsKey("FONT_COLOR"))
+                                {
+                                    string color = Styles["FONT_COLOR"].ToString();
+                                    font.Color = GetFontRGBColor(Styles["FONT_COLOR"].ToString());
+                                }
+                                builder.Write(signValue);//普通字符串
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        result = false;
+                        errormsg += "签名字段" + signTag + "失败:" + ex.Message;
+                        errormsg += Environment.NewLine;
+                    }
+                }
+                doc.Save(FilePath);
+                aOutFile = FilePath;
+            }
+            catch (Exception ex)
+            {
+                result = false;
+                errormsg = "签名文件" + Path.GetFileNameWithoutExtension(FilePath) + "失败:" + ex.Message;
+            }
+            return result;
+        }
+
+        
+        private bool SignExcelFile(string FilePath, DataTable Contens, Hashtable Styles, out string aOutFile, out string errormsg)
+        {
+            bool result = true;
+            aOutFile = "";
+            errormsg = "";
+            try
+            {
+                Workbook excel = new Workbook(FilePath);     //读取excel    
+                Aspose.Cells.Style style = excel.DefaultStyle;
+                if (Styles.ContainsKey("FONT_TYPE"))
+                {
+                    style.Font.Name = Styles["FONT_TYPE"].ToString(); //字体
+                }
+                if (Styles.ContainsKey("FONT_SIZE"))
+                {
+                    style.Font.Size = Convert.ToInt32(Styles["FONT_SIZE"]);//大小
+                }
+                if (Styles.ContainsKey("FONT_COLOR"))
+                {
+                    style.Font.Color = GetFontRGBColor(Styles["FONT_COLOR"].ToString());
+                }
+                for (int i = 0; i < Contens.Rows.Count; i++)
+                {
+                    string Location = Contens.Rows[i]["signTag"].ToString(); //格式为sheet名称：单元格；如签名测试：B2
+                    try
+                    {
+                        string sheetName = Location.Split(':')[0].ToString();
+                        string cellcount = Location.Split(':')[1].ToString();
+                        Worksheet sheet = excel.Worksheets[sheetName];
+                        if (sheet == null)
+                        {
+                            errormsg = string.Format("未找到工作表【{0}】", sheetName);
+                        }
+                        else
+                        {
+                            Aspose.Cells.Cell cell = sheet.Cells[cellcount];
+                            try
+                            {
+                                int iIndex = sheet.Pictures.Add(cell.Row, cell.Column, Contens.Rows[i]["signValue"].ToString(), 10, 10);  //图片大小暂时写死
+                                Aspose.Cells.Drawing.Picture pic = sheet.Pictures[iIndex];
+                            }
+                            catch (Exception ex)
+                            {
+                                cell.PutValue(Contens.Rows[i]["signValue"]);
+                                cell.SetStyle(style);
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        result = false;
+                        errormsg += "签名Excel中" + Location + "失败:" + ex.Message;
+                        errormsg += Environment.NewLine;
+                    }
+                }
+                excel.Save(FilePath);
+                aOutFile = FilePath;
+            }
+            catch (Exception ex)
+            {
+                result = false;
+                errormsg = "签名文件" + Path.GetFileNameWithoutExtension(FilePath) + "失败:" + ex.Message;
+            }
+            return result;
+        }
+
+
+        /// <summary>
+        /// pdf签名
+        /// </summary>
+        /// <param name="FilePath">pdf路径</param>
+        /// <param name="Contens">签名信息dt.包含签名图片地址或名称、签名位置、页数</param>
+        /// <param name="Styles">字体样式或大小</param>
+        /// <param name="aOutFile"></param>
+        /// <param name="errormsg"></param>
+        /// <returns></returns>
+        private bool SignPdfFile(string FilePath, DataTable Contens, Hashtable Styles, out string aOutFile, out string errormsg)
+        {
+            bool result = true;
+            aOutFile = string.Empty;
+            errormsg = string.Empty;
+            try
+            {                 
+                PdfReader pdfReader = new PdfReader(FilePath); //读pdf
+                //创建临时输出文件
+                string newFileName = Path.GetTempPath() +"\\"+ Path.GetFileNameWithoutExtension(FilePath) + "temp.pdf";
+                if (File.Exists(newFileName))
+                {
+                    File.Delete(newFileName);
+                }
+                PdfStamper pdfStamper = new PdfStamper(pdfReader, new FileStream(newFileName, FileMode.Create));
+                BaseFont bf = BaseFont.CreateFont(@"C:\windows\fonts\STKAITI.TTF", BaseFont.IDENTITY_H, BaseFont.EMBEDDED); //获取系统字体 宋体
+                int pagesNum = pdfReader.NumberOfPages;
+                int FontSize=0;
+                System.Drawing.Color Color = new System.Drawing.Color();
+                if (Styles.ContainsKey("FONT_SIZE"))
+                {
+                     FontSize = Convert.ToInt32(Styles["FONT_SIZE"]);//大小
+                }
+                if (Styles.ContainsKey("FONT_COLOR"))
+                {
+                     Color = GetFontRGBColor(Styles["FONT_COLOR"].ToString());
+                }
+                for (int i = 0; i < Contens.Rows.Count; i++)
+                {
+                    string signTag = Contens.Rows[i]["signTag"].ToString();              //需要签的位置  页数
+                    string signValue = Contens.Rows[i]["signValue"].ToString();        //图片地址 或者签名名称
+                    try
+                    {
+                        float putOutX = Convert.ToSingle((signTag.Split('&')[0]).Split(':')[1]);
+                        float putOutY = Convert.ToSingle((signTag.Split('&')[1]).Split(':')[1]);
+                        try
+                        {
+                            //图片
+                            Image image = iTextSharp.text.Image.GetInstance(signValue);
+                            image.SetAbsolutePosition(putOutX, putOutX);     //绝对位置 X,Y
+                            image.ScaleToFit(20, 30);   //图片大小
+                            PdfContentByte pdfContentByte = pdfStamper.GetOverContent(pagesNum);// 设置在第几页签名，在配置文件中配置 现在签最后一页
+                            pdfContentByte.AddImage(image);
+                        }
+                        catch (Exception ex)
+                        {
+                            PdfContentByte pdfContentByte = pdfStamper.GetOverContent(pagesNum);
+                            //签名宋体                         
+                            pdfContentByte.BeginText();
+                            //设置字体大小 
+                            if (FontSize != 0)
+                            {
+                                pdfContentByte.SetFontAndSize(bf, FontSize);
+                            }
+                            //设置字体颜色
+                            if (!Color.IsEmpty)
+                            {
+                                pdfContentByte.SetRGBColorFill(Color.R,Color.G,Color.B);
+                            }
+                            //设置文本所在点
+                            pdfContentByte.SetTextMatrix(putOutX, putOutY);  //签名位置
+                            pdfContentByte.ShowText(signValue);
+                            pdfContentByte.EndText();
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        result = false;
+                        errormsg += "签名PDF中" + signTag + "失败:" + ex.Message;
+                        errormsg += Environment.NewLine;
+                    }
+                }               
+                pdfStamper.Close();
+                pdfReader.Close();
+                if (File.Exists(newFileName))
+                {
+                    //将临时文件复制到原路径
+                    System.IO.File.Copy(newFileName, FilePath, true);
+                    try
+                    {
+                        System.IO.File.Delete(newFileName);
+                    }
+                    catch 
+                    {
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                result = false;
+                errormsg = "签名文件" + Path.GetFileNameWithoutExtension(FilePath) + "失败:" + ex.Message;
+            }
+            return result;
+        }
+
+        public System.Drawing.Color GetFontRGBColor(string FONT_COLOR)
+        {
+            string[] rgb = FONT_COLOR.Split(',');
+            System.Drawing.Color Color = System.Drawing.Color.FromArgb(int.Parse(rgb[0]),int.Parse(rgb[1]),int.Parse(rgb[2]));
+            return Color;
+        }
+
+        /// <summary>
+        /// Dwg签名接口
+        /// </summary>
+        /// <param name="dwgFilePathName">文件的物理路径</param>
+        /// <param name="strContens">格式:signTag=value; 例如:design=user1;check=d:\user.dxf;</param>
+        /// <returns></returns>
+        [DllImport(@"ODTBaseEx.dll")]
+        private static extern bool WriteBtlDataToDrawing(string dwgFilePathName, string strContens);
+
+        [DllImport(@"ODTBaseEx.dll")]
+        //dwg转化成pdf
+        private static extern bool ExportDwgToPdf(string dwgFilePathName, string strContens);
+
+    }
+}
+
