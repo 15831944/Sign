@@ -1,0 +1,20 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ROOT>
+  <INPUT>
+    <COMMON>
+    <ITEM  USERNAME="admin"   FIlEPATH="D:\\圈阅文件\1.dwg"  NAME="1.dwg"  VALIDSTATUS="1"/>
+    </COMMON>
+    <NOTE>
+      <ITEM FILEID="8001" FILENAME="8001.note"  FILETIME="2018/5/29 19:36:43"   FILEPATH="D:\\圈阅文件\note\8001.note" />
+      <ITEM FILEID="8002" FILENAME="8002.note"  FILETIME="2018/5/29 19:36:43"   FIlEPATH="D:\\圈阅文件\note\8002.note"  />
+      <ITEM FILEID="8003" FILENAME="8003.note"  FILETIME="2018/5/29 19:36:43"   FIlEPATH="D:\\圈阅文件\note\8003.note"  />
+      <ITEM FILEID="8004" FILENAME="8004.note"  FILETIME="2018/5/29 19:36:43"   FIlEPATH="D:\\圈阅文件\note\8004.note"  />
+    </NOTE>
+  </INPUT>
+  <OUTPUT>
+    <ITEM STATUS="修改" FILEID="8001" FILENAME="8001.note" FILESIZE="10190" FILETIME="2018/5/29 19:36:43"  LASTWRITER="admin"  FIlEPATH="D:\\圈阅文件\note\8004.note"  />
+    <ITEM STATUS="修改" FILEID="8001" FILENAME="8001.note" FILESIZE="10190" FILETIME="2018/5/29 19:36:43"  LASTWRITER="admin"  FIlEPATH="D:\\圈阅文件\note\8004.note"  />
+    <ITEM STATUS="修改" FILEID="8001" FILENAME="8001.note" FILESIZE="10190" FILETIME="2018/5/29 19:36:43"  LASTWRITER="admin"  FIlEPATH="D:\\圈阅文件\note\8004.note"  />
+    <ITEM STATUS="新增" FILEID="0"    FILENAME="XX.note"   FILESIZE="10190" FILETIME="2018/5/29 19:36:43"  LASTWRITER="admin"  FIlEPATH="D:\\圈阅文件\note\8004.note"  />
+  </OUTPUT>
+</ROOT>

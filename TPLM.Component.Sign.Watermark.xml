@@ -1,0 +1,60 @@
+﻿<?xml version="1.0" encoding="UTF-8" ?>
+<!--水印配置
+*****************************
+OBJECT-ITEM：PDFMARK节点  PDF水印签章配置
+TYPE：配置类型（BASE：通用配置；IMG：图片水印配置；TEXT：文字水印配置）
+ID:配置ID不能重复，从8001开始
+NAME：配置名称
+DEFAULT：是否为图幅默认配置，未提供ID时，启用该字段
+FONTCOLOR 字体颜色"R,G,B"
+IMAGERATE 水印图片的倍率,用于调整图片的大小
+ORIENTATION:0表示横向；1表示纵向
+ROW 表示行数
+COL 表示列数
+ROW与COL  用来控制水印图片的数量
+ROTATE：旋转角度
+TRANSPARENT：透明度
+LEFT：以左下角为原点，图片水印X坐标，ALIGN为空或N，启用坐标定位
+BOTTOM:以左下角为原点，图片水印Y坐标，ALIGN为空或N，启用坐标定位
+STYLE:水印样式(0:无水印：1:普通水印；2:背景水印；
+BINDING:水印配置应用给那些对象类型，目前支持文档类型ID，如有多个类型以逗号分隔
+ALIGN:水印位置，此选项不为空，则优先使用该选项（选项为空或N：使用坐标定位；LT：左上；RT：右上；LB：左下；RB：右下；M：居中）
+MARKLEVEL:水印位置，0是置于底层，1是至于顶层
+*********************************
+OBJECT-ITEM:MARK_LIST 节点
+NAME:水印ID
+VALUE:水印值
+TYPE:水印类型（TEXT：文字水印；DATE：日期水印）
+FILEPATH：水印图片路径,如果为空，则有程序自动生成水印图片
+****************************
+OBJECT-ITEM:DATA_BINDING节点
+BINDING：绑定的名称或ID，多个值使用分号分隔，如为*，则适用所有对象
+STAGE：绑定的对象阶段,多个值使用分号分隔，如为*，则适用所有阶段
+MARK_LIST_ID：关联的水印集合，多个使用分号分隔
+MARK_TYPE:水印生成方式（1:不做任何处理，使用水印默认方式；2：程序生成水印图片） 
+MODEL_LIST_ID：水印配置模板ID，多个使用分号分隔
+****************************
+-->
+<ROOT>
+  <MODEL_LIST>
+  	<ITEM ID="8007" TYPE="IMG"  DEFAULT="Y"  IMAGERATE="0.2"  ROW="3" COL="2" ROTATE="30" TRANSPARENT="0.5" LEFT="50" BOTTOM="50" STYLE="1" ALIGN="" MARKLEVEL="1" />
+    <ITEM ID="8008" TYPE="TEXT" DEFAULT="Y"  FONTCOLOR="255,0,0"   ROW="1" COL="1" ROTATE="0"  TRANSPARENT="0.5" LEFT="50" BOTTOM="-1" STYLE="1" ALIGN="LT"  MARKLEVEL="1"/>
+  </MODEL_LIST>
+  
+  <MARK_LIST>
+  <ITEM ID="7000" VALUE="C:\水印图片.jpg"   TYPE="IMG"  FORMATE="" ></ITEM>
+	<ITEM ID="7001" VALUE="内控"   TYPE="TEXT" FORMATE=""></ITEM>
+	<ITEM ID="7002" VALUE="试制用" TYPE="TEXT" FORMATE=""></ITEM>
+	<ITEM ID="7003" VALUE="生产用" TYPE="TEXT" FORMATE=""></ITEM>
+	<ITEM ID="7004" VALUE="作废"   TYPE="TEXT" FORMATE=""></ITEM>
+	<ITEM ID="7005" VALUE="年 月"  TYPE="DATE" FORMATE="yyyy年MM月" FILEPATH="" ></ITEM>
+  </MARK_LIST>
+
+  <DATA_BINDING>
+  <ITEM ID="6000" DEFAULT="Y"  BINDING=""  STAGE=""  MARK_LIST_ID="7000"  MODEL_LIST_ID="8007"  MARK_TYPE="2"   ROTATE="0"  FONT="宋体;19;1;1"></ITEM>
+	<ITEM ID="6001" DEFAULT="N"  BINDING="冲压;PFEMA;过程流程图;产品/过程特殊特性清单;关键工序控制清单;三大文件" STAGE="ET;PT" MARK_LIST_ID="7001;7002;7004" MARK_TYPE="2" MODEL_LIST_ID="8008" ROTATE="0" FONT="宋体;19;1;1"></ITEM>
+	<ITEM ID="6003" DEFAULT="N"  BINDING="工程作业表" STAGE="ET;PT" MARK_LIST_ID="7002;7005"  MARK_TYPE="2" MODEL_LIST_ID="8011" ROTATE="0" FONT="宋体;19;0;0"></ITEM>
+  <ITEM ID="6004" DEFAULT="N"  BINDING="工程作业表" STAGE="SOP;量产后" MARK_LIST_ID="7003;7005"  MARK_TYPE="2" MODEL_LIST_ID="8011" ROTATE="0" FONT="宋体;19;0;0"></ITEM>
+  <ITEM ID="6005" DEFAULT="N"  BINDING="工程作业表" STAGE="SOP;量产后" MARK_LIST_ID="7003;7005"  MARK_TYPE="2" MODEL_LIST_ID="8011" ROTATE="0" FONT="宋体;19;0;0"></ITEM>
+  </DATA_BINDING>
+</ROOT>

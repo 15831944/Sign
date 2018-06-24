@@ -1,0 +1,19 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<objects >
+    <object name="DOC"     type="PdfViewer" singleton="false"></object>
+    <object name="DOCX"    type="PdfViewer" singleton="false"></object>
+    <object name="PPT"     type="PdfViewer" singleton="false"></object>
+    <object name="XLS"     type="PdfViewer" singleton="false"></object>  
+    <object name="XLSX"    type="PdfViewer" singleton="false"></object>  
+    <object name="IVA"     type="InteVueViewer" singleton="false"></object>
+    <object name="IVP"     type="InteVueViewer" singleton="false"></object>
+    <object name="IVI"     type="InteVueViewer" singleton="false"></object>    
+    <object name="IVG"     type="InteVueViewer" singleton="false"></object>
+    <object name="TYM"     type="InteVueViewer" singleton="false"></object>
+    <object name="DXF"     type="InteVueViewer" singleton="false"></object>    
+    <object name="SAT"     type="InteVueViewer" singleton="false"></object>
+    <object name="MODEL"   type="InteVueViewer" singleton="false"></object> 
+    <object name="DWG"     type="InteVueViewer" singleton="false"></object>      	
+    <object name="TYC"     type="CappViewer" singleton="false"></object>
+    <object name="GDF"     type="CappViewer" singleton="false"></object>
+</objects>

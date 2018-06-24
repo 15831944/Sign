@@ -1,0 +1,21 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<ROOT>
+  <INPUT>
+    <ITEM ID="0">
+      <SIGNFILE FILENAME="3.docx" FILEPATH="E:\zoux\2017\test\3.docx" PDF="true" />
+      <SIGNINFO>
+        <ITEM NAME="设计" VALUE="张三" TYPE="PERSON" />
+        <ITEM NAME="审核" VALUE="E:\zoux\2017\test\高亮.jpg" TYPE="PERSON" />
+        <ITEM NAME="批准" VALUE="张三" TYPE="PERSON" />
+        <ITEM NAME="发布" VALUE="E:\zoux\2017\test\高亮.png" TYPE="PERSON" />
+        <ITEM NAME="设计日期" VALUE="2018-06-01" TYPE="DATE" />
+        <ITEM NAME="审核日期" VALUE="2018/01/02" TYPE="DATE" />
+        <ITEM NAME="批准日期" VALUE="2018.01.02" TYPE="DATE" />
+        <ITEM NAME="发布日期" VALUE="2018-09-02" TYPE="DATE" />
+      </SIGNINFO>
+    </ITEM>
+  </INPUT>
+  <OUTPUT>
+    <ITEM ID="0" ERRORINFO="签名字段设计失败:“666”的值对于“blue”无效。“blue”应该大于或等于 0 且小于或等于 255。&#xD;&#xA;签名字段批准失败:“666”的值对于“blue”无效。“blue”应该大于或等于 0 且小于或等于 255。&#xD;&#xA;签名字段发布失败:“666”的值对于“blue”无效。“blue”应该大于或等于 0 且小于或等于 255。&#xD;&#xA;签名字段设计日期失败:“666”的值对于“blue”无效。“blue”应该大于或等于 0 且小于或等于 255。&#xD;&#xA;签名字段审核日期失败:“666”的值对于“blue”无效。“blue”应该大于或等于 0 且小于或等于 255。&#xD;&#xA;签名字段批准日期失败:“666”的值对于“blue”无效。“blue”应该大于或等于 0 且小于或等于 255。&#xD;&#xA;签名字段发布日期失败:“666”的值对于“blue”无效。“blue”应该大于或等于 0 且小于或等于 255。&#xD;&#xA;" />
+  </OUTPUT>
+</ROOT>
