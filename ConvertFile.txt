@@ -21,15 +21,15 @@ namespace FileConverHelper
         {
             try
             {
-                //·ÀÖ¹ÎÄ±¾×Ö·ûÖÐÓÐÌØÊâ×Ö·û¡£±ØÐëÓÃEncoding.Default
+                //é˜²æ­¢æ–‡æœ¬å­—ç¬¦ä¸­æœ‰ç‰¹æ®Šå­—ç¬¦ã€‚å¿…é¡»ç”¨Encoding.Default
                 StreamReader reader = new StreamReader(templatefilename, Encoding.Default);
                 String a = reader.ReadToEnd();
                 for (int i = 0; i < orginalArray.Length; i++)
                 {
                     a = a.Replace(orginalArray[i], replaceArray[i]);
                 }
-                //·ÀÖ¹ÎÄ±¾×Ö·ûÖÐÓÐÌØÊâ×Ö·û¡£±ØÐëÓÃEncoding.Default
-                string desfilename = System.IO.Path.ChangeExtension(srcfilename, ".html");//htmlÎÄ¼þÂ·¾¶
+                //é˜²æ­¢æ–‡æœ¬å­—ç¬¦ä¸­æœ‰ç‰¹æ®Šå­—ç¬¦ã€‚å¿…é¡»ç”¨Encoding.Default
+                string desfilename = System.IO.Path.ChangeExtension(srcfilename, ".html");//htmlæ–‡ä»¶è·¯å¾„
                 StreamWriter readTxt = new StreamWriter(desfilename, false, Encoding.Default);
                 readTxt.Write(a);
                 readTxt.Flush();
@@ -48,10 +48,10 @@ namespace FileConverHelper
             One = 1, Two = 2, Three = 3, Four = 4, Five = 5, Six = 6, Seven = 7, Eight = 8, Nine = 9, Ten = 10
         }
 
-        #region ÎÄ¼þµÄÖ±½Ó×ª»¯
+        #region æ–‡ä»¶çš„ç›´æŽ¥è½¬åŒ–
         public static string ConvertTopdf(string FilePath)
         {
-            string result = ""; //·µ»Ø×ª»»Ö®ºóÎÄ¼þµÄÂ·¾¶
+            string result = ""; //è¿”å›žè½¬æ¢ä¹‹åŽæ–‡ä»¶çš„è·¯å¾„
             try
             {
                 string _fileExt = Path.GetExtension(FilePath);
@@ -70,8 +70,10 @@ namespace FileConverHelper
                     case ".xlsx":
                         Workbook excel = new Workbook(FilePath); 
                         Aspose.Cells.Style style = excel.DefaultStyle;
+                        Aspose.Cells.PdfSaveOptions xlsSaveOption = new Aspose.Cells.PdfSaveOptions();                
+                        xlsSaveOption.AllColumnsInOnePagePerSheet = true; //excelè½¬pdfæ˜¯åˆ—è¿‡å¤šæ—¶ ä½¿å…¶åœ¨ä¸€é¡µæ˜¾ç¤º
                         FilePath = Path.ChangeExtension(FilePath, ".pdf");
-                        excel.Save(FilePath, Aspose.Cells.SaveFormat.Pdf);
+                        excel.Save(FilePath, xlsSaveOption);
                         break;
                     case ".ppt":
                     case ".pptx":
@@ -97,11 +99,11 @@ namespace FileConverHelper
         #endregion
 
 
-        #region ÎÄ¼þÁ÷ÐÎÊ½µÄ×ª»¯
+        #region æ–‡ä»¶æµå½¢å¼çš„è½¬åŒ–
 
         public static string Convert(string aFileName, byte[] aFileData, string aFileOID)
         {
-            string result = ""; //·µ»Ø×ª»»Ö®ºóÎÄ¼þµÄÂ·¾¶
+            string result = ""; //è¿”å›žè½¬æ¢ä¹‹åŽæ–‡ä»¶çš„è·¯å¾„
             try
             {
                 string _fileName = Path.GetFileNameWithoutExtension(aFileName);
@@ -223,7 +225,7 @@ namespace FileConverHelper
         //public static string ConvertPDF2Image(byte[] aFileData,
         //string imageName, int startPageNum, int endPageNum, ImageFormat imageFormat, Definition definition)
         //{
-        //    //½«Á÷ÎÄ¼þ´æ´¢ÎªÎÄ¼þ È»ºóÔÙ½øÐÐ×ª»»
+        //    //å°†æµæ–‡ä»¶å­˜å‚¨ä¸ºæ–‡ä»¶ ç„¶åŽå†è¿›è¡Œè½¬æ¢
         //    string tmpFileName = Path.GetTempFileName();
         //    System.IO.File.WriteAllBytes(tmpFileName, aFileData);
         //    //end
@@ -254,7 +256,7 @@ namespace FileConverHelper
         //        pageImage.Dispose();
         //        listimage.Add(imageOutputPath + imageName + i.ToString() + "." + imageFormat.ToString());
         //    }
-        //    //ºÏ²¢Í¼Æ¬
+        //    //åˆå¹¶å›¾ç‰‡
         //    string outputImage = "";
         //    if (listimage.Count > 0)
         //    {
